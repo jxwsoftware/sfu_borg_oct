@@ -36,11 +36,15 @@ those of the authors and should not be interpreted as representing official
 policies, either expressed or implied.
 **********************************************************************************/
 
-#include "ProcessThread.hpp"
+
 #include <iostream>
 
+#include "cuda_ProcHeader.cuh"
+#include "ProcessThread.hpp"
+
+
 //////////////////////////////////////////////////////////////////
-extern "C" void initGLVarAndPtrs(bool procesData,
+void initGLVarAndPtrs(bool procesData,
 								 bool volumeRend,
 								 bool fundRend,
 								 int frameWid, 
@@ -51,15 +55,15 @@ extern "C" void initGLVarAndPtrs(bool procesData,
 								 int winHei,
 								 int volumeMode);
 
-extern "C" void initCudaProcVar(	int frameWid, 
+void initCudaProcVar(	int frameWid, 
 									int frameHei, 
 									int framesPerBuff, 
 									int fftLenMult);
 
-extern "C" void setBufferPtr( unsigned short *h_buffer);
-extern "C" void registerCudaHost();
-extern "C" void initGLEvent(int argc, char** argv);
-extern "C" void runGLEvent();
+void setBufferPtr( unsigned short *h_buffer);
+void registerCudaHost();
+void initGLEvent(int argc, char** argv);
+void runGLEvent();
 //////////////////////////////////////////////////////////////////
 
 

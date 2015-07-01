@@ -76,7 +76,7 @@ int main()
 
 	//Define the filename to be used for file acquisition simulation
 	char *fileName = new char[100];
-	fileName = "H059-OS-Vol-1_256_nice";
+	fileName = "../../../../.data/H059-OS-Vol-1_256_nice";
 
 	FILE *file = fopen(fileName, "rb");
 	if (file==NULL)

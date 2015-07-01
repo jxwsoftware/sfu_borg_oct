@@ -16,8 +16,8 @@
 
 #ifndef _VOLUMERENDER_KERNEL_CU_
 #define _VOLUMERENDER_KERNEL_CU_
-#include <cutil_inline.h>    //includes cuda.h and cuda_runtime_api.h
-#include <cutil_math.h>
+#include <helper_cuda.h>    //includes cuda.h and cuda_runtime_api.h
+#include <helper_math.h>
 
 
 bool mallocVolumeArray = false;
@@ -161,14 +161,14 @@ d_render(float *d_output, uint imageW, uint imageH,
 /*************************************************************************************************************************/
 
 //Initialization for MemcpyDeviceToDevice, for Processing AND Volume Rendering
-extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcpyKind memcpyKind)
+void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcpyKind memcpyKind)
 {
     // create 3D array
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
 
 	if (!mallocVolumeArray) {
 		cudaStreamCreate(&renderStream);
-		cutilSafeCall( cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize) );
+		cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize);
 		mallocVolumeArray = true;
 	}
     // copy data to 3D array
@@ -177,7 +177,7 @@ extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcp
     copyParams.dstArray = d_volumeArray;
     copyParams.extent   = volumeSize;
     copyParams.kind     = memcpyKind;
-    cutilSafeCall( cudaMemcpy3D(&copyParams) );  
+    cudaMemcpy3D(&copyParams);  
 
     // set texture parameters
     tex.normalized = true;                      // access with normalized texture coordinates
@@ -186,16 +186,16 @@ extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcp
     tex.addressMode[1] = cudaAddressModeClamp;
 
     // bind array to 3D texture
-    cutilSafeCall(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
+    checkCudaErrors(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
 }
 
-extern "C" void freeVolumeBuffers()
+void freeVolumeBuffers()
 {
-    cutilSafeCall(cudaFreeArray(d_volumeArray));
+    checkCudaErrors(cudaFreeArray(d_volumeArray));
 	mallocVolumeArray = false;
 }
 
-extern "C"
+
 void rayCast_kernel(dim3 gridSize, dim3 blockSize, float *d_output, int imageW, int imageH, 
 				   float density, float brightness, float transferOffset, float transferScale,
 				   float voxelThreshold)
@@ -204,10 +204,10 @@ void rayCast_kernel(dim3 gridSize, dim3 blockSize, float *d_output, int imageW, 
 										brightness, transferOffset, transferScale, voxelThreshold);
 }
 
-extern "C"
+
 void copyInvViewMatrix(float *invViewMatrix, size_t sizeofMatrix)
 {
-    cutilSafeCall( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
+    checkCudaErrors( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
 }
 
 

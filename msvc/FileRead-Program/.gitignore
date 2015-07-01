@@ -1,0 +1,8 @@
+x64
+Debug
+src
+*.sdf
+*.opensdf
+*.suo
+*.pdb
+*.swp

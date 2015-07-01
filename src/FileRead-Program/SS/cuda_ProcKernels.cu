@@ -40,7 +40,7 @@ policies, either expressed or implied.
 #include <stdio.h>
 #include <cuda.h> //Include the general CUDA Header file
 #include <cufft.h> //This is to perform FFT using CUDA
-#include <cutil_inline.h> //This is to perform CUDA safecall functions
+#include <helper_cuda.h> //This is to perform CUDA safecall functions
 #include <cuda_runtime.h>
 
 typedef float2 Complex;
@@ -184,9 +184,7 @@ __global__ void avgKernel(float *src_Buffer, float *dst_Buffer, int frameNum, in
 }
 
 
-
-template <unsigned int blockSize>
-__device__ void warpReduce(volatile float *sdata, unsigned int tid) 
+__device__ void warpReduce(volatile float *sdata, unsigned int tid, unsigned int blockSize) 
 {
 	if (blockSize >=  64) sdata[tid] += sdata[tid + 32];
 	if (blockSize >=  32) sdata[tid] += sdata[tid + 16];
@@ -197,7 +195,6 @@ __device__ void warpReduce(volatile float *sdata, unsigned int tid)
 }
 
 
-template <unsigned int blockSize>
 __global__ void renderFundus(float *g_idata, float *g_odata, unsigned int width, float scaleCoeff, int offset) 
 {
 	//The declaration for 1024 elements is arbitrary
@@ -210,13 +207,13 @@ __global__ void renderFundus(float *g_idata, float *g_odata, unsigned int width,
 
 	//Unroll the initial values to sum into the first 128 elements
 	sdata[tid] = 0;
-	for (int j=0; j<width; j+=blockSize)
+	for (int j=0; j<width; j+=blockDim.x)
 		sdata[tid] += g_idata[rowIdx*width + tid + j];
 	__syncthreads();
 
 	//Reduction of the remaining elements
-	if (blockSize >= 128) { if (tid <  64) { sdata[tid] += sdata[tid +  64]; } __syncthreads(); }
-	if (tid < 32) warpReduce<blockSize>(sdata, tid);
+	if (blockDim.x >= 128) { if (tid <  64) { sdata[tid] += sdata[tid +  64]; } __syncthreads(); }
+	if (tid < 32) warpReduce(sdata, tid, blockDim.x);
 
 	//Assign the zeroth index value, containing the sum, into global memory
 	if (tid == 0) g_odata[rowIdx] = sdata[0]*scaleCoeff;

@@ -41,9 +41,9 @@ policies, either expressed or implied.
 #include <stdio.h>
 #include <cuda.h> //Include the general CUDA Header file
 #include <cufft.h> //This is to perform FFT using CUDA
-#include <cutil_inline.h> //This is to perform CUDA safecall functions
+#include <helper_cuda.h> //This is to perform CUDA safecall functions
 #include <cuda_runtime.h>
-#include "cuda_ProcKernels.cu" 
+#include "cuda_ProcHeader.cuh" 
 
 
 typedef float2 Complex;
@@ -83,12 +83,10 @@ cudaStream_t kernelStream;
 /*************************************************************************************************************************/
 void batchFFT(Complex *d_ComplexArray, cudaStream_t processStream)
 {
-	cufftSafeCall(
-		cufftExecC2C(fft_plan,
-					(cufftComplex *)d_ComplexArray,
-					(cufftComplex *)d_ComplexArray,
-					CUFFT_FORWARD)
-	);
+	cufftExecC2C(fft_plan,
+				(cufftComplex *)d_ComplexArray,
+				(cufftComplex *)d_ComplexArray,
+				CUFFT_FORWARD);
 }
 
 
@@ -99,20 +97,20 @@ void initProcCuda()
 {
 		cudaStreamCreate(&memcpyStream);
 		cudaStreamCreate(&kernelStream);
-		cutilSafeCall( cudaMalloc((void**)&dev_tempBuffer, bufferSize * sizeof(float)));
-		cutilSafeCall( cudaMalloc((void**)&dev_uShortBufferA, bufferSize * sizeof(unsigned short)));
-		cutilSafeCall( cudaMalloc((void**)&dev_uShortBufferB, bufferSize * sizeof(unsigned short)));
-		cutilSafeCall( cudaMalloc((void**)&dcArray, frameWidth * sizeof(float)));
+		cudaMalloc((void**)&dev_tempBuffer, bufferSize * sizeof(float));
+		cudaMalloc((void**)&dev_uShortBufferA, bufferSize * sizeof(unsigned short));
+		cudaMalloc((void**)&dev_uShortBufferB, bufferSize * sizeof(unsigned short));
+		cudaMalloc((void**)&dcArray, frameWidth * sizeof(float));
 		cudaMemset(dcArray, 0, frameWidth * sizeof(float));
-		cutilSafeCall( cudaMalloc((void**)&dev_FFTCompBuffer, bufferSize * fftLengthMult * sizeof(Complex)));
+		cudaMalloc((void**)&dev_FFTCompBuffer, bufferSize * fftLengthMult * sizeof(Complex));
 
 		//Be sure to have the fft_width size be dynamic
-		cufftSafeCall( cufftPlan1d( &fft_plan, fftLengthMult*frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer));
-		cufftSafeCall( cufftSetStream(fft_plan, kernelStream));
+		cufftPlan1d( &fft_plan, fftLengthMult*frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer);
+		cufftSetStream(fft_plan, kernelStream);
 }
 
 
-extern "C" void initCudaProcVar(	int frameWid, 
+void initCudaProcVar(	int frameWid, 
 								int frameHei, 
 								int framesPerBuff, 
 								int fftLenMult)
@@ -139,15 +137,15 @@ extern "C" void initCudaProcVar(	int frameWid,
 }
 
 
-extern "C" void cleanUpCUDABuffers()
+void cleanUpCUDABuffers()
 {
 	//Clean up all CUDA Buffers and arryays
-	cutilSafeCall(cudaFree(dcArray));
-	cutilSafeCall(cudaFree(dev_FFTCompBuffer));
-	cutilSafeCall(cudaFree(dev_tempBuffer));
+	cudaFree(dcArray);
+	cudaFree(dev_FFTCompBuffer);
+	cudaFree(dev_tempBuffer);
 
 	//Clean up FFT plans created
-	cufftSafeCall(cufftDestroy(fft_plan));
+	cufftDestroy(fft_plan);
 
 	//Clean up the streams created
 	cudaStreamDestroy(memcpyStream);
@@ -211,7 +209,7 @@ void postFFTCrop(Complex *d_ComplexArray, float *dev_processBuffer, int frames, 
 }
 
 //This Function calls the kernel which averages the given number of frames into a single frame (B-scan)
-extern "C" void frameAvg(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int numberOfFrames, int frameNum)
+void frameAvg(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int numberOfFrames, int frameNum)
 {
 	if (dev_multiFrameBuff==NULL) {
 		dev_multiFrameBuff = dev_tempBuffer;
@@ -223,7 +221,7 @@ extern "C" void frameAvg(float *dev_multiFrameBuff, float *dev_displayBuff, int 
 }
 
 //This Kernel will copy one single frame to the display buffer
-extern "C" void copySingleFrame(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int frameNum)
+void copySingleFrame(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int frameNum)
 {
 	if (dev_multiFrameBuff==NULL) {
 		dev_multiFrameBuff = dev_tempBuffer;
@@ -236,7 +234,7 @@ extern "C" void copySingleFrame(float *dev_multiFrameBuff, float *dev_displayBuf
 
 
 
-extern "C" void cudaPipeline(	unsigned short *h_buffer, 
+void cudaPipeline(	unsigned short *h_buffer, 
 								float *dev_frameBuff, 
 								int frameIdx,
 								int reduction, //This is used only for Downsizing
@@ -277,7 +275,7 @@ extern "C" void cudaPipeline(	unsigned short *h_buffer,
 	}
 
 	//Memcpy data into one buffer
-	cutilSafeCall( cudaMemcpyAsync((void *) memcpyBuffer, h_buffer, bufferSize*sizeof(unsigned short), cudaMemcpyHostToDevice, memcpyStream));
+	cudaMemcpyAsync((void *) memcpyBuffer, h_buffer, bufferSize*sizeof(unsigned short), cudaMemcpyHostToDevice, memcpyStream);
 	subDC_and_PadComplex(processBuffer, dev_FFTCompBuffer, dcArray, kernelStream);
 	batchFFT(dev_FFTCompBuffer, kernelStream);
 
@@ -294,7 +292,7 @@ extern "C" void cudaPipeline(	unsigned short *h_buffer,
 }
 
 
-extern "C" void cudaRenderFundus( float *dev_fundus, float *dev_volume, int width, int height, int depth)
+void cudaRenderFundus( float *dev_fundus, float *dev_volume, int width, int height, int depth)
 {
 	//Can be up to 1024, but incredibly inefficient at 1024
 	//128 is the most optimum size for this kernel
@@ -310,7 +308,7 @@ extern "C" void cudaRenderFundus( float *dev_fundus, float *dev_volume, int widt
 	dim3 dimGridX(height*increment);
 
 	for (int i=0; i<depth; i+=increment) {
-		renderFundus<blockSize><<<dimGridX, dimBlockX, 0, kernelStream>>>
+		renderFundus<<<dimGridX, dimBlockX, 0, kernelStream>>>
 			(dev_volume, dev_fundus, width, scaleCoeff, height*i);
 	}
 }
@@ -323,21 +321,21 @@ extern "C" void cudaRenderFundus( float *dev_fundus, float *dev_volume, int widt
 /*****************************************************************************************************************************/
 /*****************************************************************************************************************************/
 
-extern "C" void acquireDC()
+void acquireDC()
 {
 	dcAcquired = false;
 }
 /*****************************************************************************************************************************/
 /*****************************************************************************************************************************/
 /*****************************************************************************************************************************/
-extern "C" void decreaseMinVal()
+void decreaseMinVal()
 {
 	minVal -= 0.5f;
 	printf("New minVal is %0.1f", minVal);
 	printf("\n");
 }
 /*****************************************************************************************************************************/
-extern "C" void increaseMinVal()
+void increaseMinVal()
 {
 	if (minVal==maxVal-1) {
 		printf("Error: minVal cannot be equal or greater than maxVal!\n");
@@ -349,14 +347,14 @@ extern "C" void increaseMinVal()
 	}
 }
 /*****************************************************************************************************************************/
-extern "C" void increaseMaxVal()
+void increaseMaxVal()
 {
 	maxVal += 0.5f;
 	printf("New maxVal is %0.1f", maxVal);
 	printf("\n");
 }
 /*****************************************************************************************************************************/
-extern "C" void decreaseMaxVal()
+void decreaseMaxVal()
 {
 	if (maxVal==minVal+1) {
 		printf("Error: maxVal cannot be equal or less than than minVal!\n");
