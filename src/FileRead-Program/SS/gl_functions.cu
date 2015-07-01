@@ -250,7 +250,7 @@ void initBScanTexture()
 
 		glGenTextures(1, &bscanTEX);				//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, bscanTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, bscanWidth, bscanHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, bscanWidth, bscanHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
@@ -277,7 +277,7 @@ void initFundusTexture()
 
 		glGenTextures(1, &fundusTEX);				//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, fundusTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, volumeHeight, frames, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, volumeHeight, frames, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
@@ -304,7 +304,7 @@ void initVolumeTexture()
 
 		glGenTextures(1, &volumeTEX);		//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, volumeTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, subWindWidth, subWindHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, subWindWidth, subWindHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
