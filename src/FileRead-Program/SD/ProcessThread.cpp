@@ -40,36 +40,7 @@ policies, either expressed or implied.
 #include "ProcessThread.hpp"
 #include <iostream>
 
-/*************************************************************************************************************************/
-extern "C" void initGLVarAndPtrs(bool procesData,
-								 bool volumeRend,
-								 bool fundRend,
-								 int frameWid, 
-								 int frameHei, 
-								 int framesPerBuff,
-								 int fileLength,
-								 int winWid,
-								 int winHei,
-								 int interpMethod,
-								 int volumeMode);
-
-extern "C" void initCudaProcVar(	int frameWid, 
-									int frameHei, 
-									int framesPerBuff,
-									float lambMin,
-									float lambMax,
-									float dispMag,
-									float dispValue,
-									float dispValueThird,
-									int interpMethod,
-									int fftLenMult);
-
-extern "C" void setBufferPtr( unsigned short *h_buffer);
-extern "C" void registerCudaHost();
-extern "C" void initGLEvent(int argc, char** argv);
-extern "C" void runGLEvent();
-/*************************************************************************************************************************/
-
+#include "cuda_Header.cuh"
 
 
 void ProcessThread::InitProcess(	buffer *h_buffer, int *buffCounter, bool procData, bool volRend, bool fundRend, 

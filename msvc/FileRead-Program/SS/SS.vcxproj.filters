@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\FileReadThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\main.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\ProcessThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\thread.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\FileReadThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\Global.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\ProcessThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\thread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\cuda_ProcHeader.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\gl_functions.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_FilterKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_ProcFunctions.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_ProcKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_RayCastKernels.cu" />
+  </ItemGroup>
+</Project>

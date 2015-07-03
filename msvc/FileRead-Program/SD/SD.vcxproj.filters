@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\FileRead-Program\SD\cuda_Header.cuh" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SD\FileReadThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SD\Global.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SD\ProcessThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SD\thread.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SD\cuda_ProcFunctions.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SD\cuda_ProcKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SD\cuda_RayCastKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SD\gl_functions.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SD\cuda_FilterKernels.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\FileRead-Program\SD\FileReadThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SD\main.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SD\ProcessThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SD\thread.cpp" />
+  </ItemGroup>
+</Project>

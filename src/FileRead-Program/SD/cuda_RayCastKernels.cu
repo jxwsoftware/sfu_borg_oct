@@ -16,8 +16,8 @@
 #ifndef _VOLUMERENDER_KERNEL_CU_
 #define _VOLUMERENDER_KERNEL_CU_
 
-#include <cutil_inline.h>    // includes cuda.h and cuda_runtime_api.h
-#include <cutil_math.h>
+#include <helper_cuda.h>    // includes cuda.h and cuda_runtime_api.h
+#include <helper_math.h>
 
 
 bool mallocVolumeArray = false;
@@ -170,7 +170,7 @@ extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcp
 
 	if (!mallocVolumeArray) {
 		cudaStreamCreate(&renderStream);
-		cutilSafeCall( cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize) );
+		checkCudaErrors( cudaMalloc3DArray(&d_volumeArray, &channelDesc, volumeSize) );
 		mallocVolumeArray = true;
 	}
     // copy data to 3D array
@@ -179,7 +179,7 @@ extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcp
     copyParams.dstArray = d_volumeArray;
     copyParams.extent   = volumeSize;
     copyParams.kind     = memcpyKind;
-    cutilSafeCall( cudaMemcpy3D(&copyParams) );  
+    checkCudaErrors( cudaMemcpy3D(&copyParams) );  
 
     // set texture parameters
     tex.normalized = true;                      // access with normalized texture coordinates
@@ -188,14 +188,14 @@ extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcp
     tex.addressMode[1] = cudaAddressModeClamp;
 
     // bind array to 3D texture
-    cutilSafeCall(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
+    checkCudaErrors(cudaBindTextureToArray(tex, d_volumeArray, channelDesc));
 }
 
 
 
 extern "C" void freeVolumeBuffers()
 {
-    cutilSafeCall(cudaFreeArray(d_volumeArray));
+    checkCudaErrors(cudaFreeArray(d_volumeArray));
 	mallocVolumeArray = false;
 }
 
@@ -211,7 +211,7 @@ void rayCast_kernel(dim3 gridSize, dim3 blockSize, float *d_output, int imageW, 
 extern "C"
 void copyInvViewMatrix(float *invViewMatrix, size_t sizeofMatrix)
 {
-    cutilSafeCall( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
+    checkCudaErrors( cudaMemcpyToSymbol(c_invViewMatrix, invViewMatrix, sizeofMatrix) );
 }
 
 

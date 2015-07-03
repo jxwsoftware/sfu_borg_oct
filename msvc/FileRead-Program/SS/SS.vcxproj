@@ -18,6 +18,26 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\FileReadThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\main.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\ProcessThread.cpp" />
+    <ClCompile Include="..\..\..\src\FileRead-Program\SS\thread.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\cuda_ProcHeader.cuh" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\FileReadThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\Global.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\ProcessThread.hpp" />
+    <ClInclude Include="..\..\..\src\FileRead-Program\SS\thread.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_FilterKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_ProcFunctions.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_ProcKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\cuda_RayCastKernels.cu" />
+    <CudaCompile Include="..\..\..\src\FileRead-Program\SS\gl_functions.cu" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -70,12 +90,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\src\FileRead-Program\SS;$(CUDA_PATH)\include;$(NVCUDASAMPLES_ROOT)\common\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\..\src\FileRead-Program\SS;$(CUDA_PATH)\include;$(NVCUDASAMPLES_ROOT)\common\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\x64;$(NVCUDASAMPLES_ROOT)\common\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\src\FileRead-Program\SS;$(CUDA_PATH)\include;$(NVCUDASAMPLES_ROOT)\common\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\..\src\FileRead-Program\SS;$(CUDA_PATH)\include;$(NVCUDASAMPLES_ROOT)\common\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\x64;$(NVCUDASAMPLES_ROOT)\common\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -153,26 +173,6 @@ copy $(SolutionDir)..\..\bin\freeglut.dll $(SolutionDir)$(Platform)\$(Configurat
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <CudaCompile Include="..\..\src\FileRead-Program\SS\cuda_FilterKernels.cu" />
-    <CudaCompile Include="..\..\src\FileRead-Program\SS\cuda_ProcFunctions.cu" />
-    <CudaCompile Include="..\..\src\FileRead-Program\SS\cuda_ProcKernels.cu" />
-    <CudaCompile Include="..\..\src\FileRead-Program\SS\cuda_RayCastKernels.cu" />
-    <CudaCompile Include="..\..\src\FileRead-Program\SS\gl_functions.cu" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\src\FileRead-Program\SS\FileReadThread.cpp" />
-    <ClCompile Include="..\..\src\FileRead-Program\SS\main.cpp" />
-    <ClCompile Include="..\..\src\FileRead-Program\SS\ProcessThread.cpp" />
-    <ClCompile Include="..\..\src\FileRead-Program\SS\thread.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\FileRead-Program\SS\cuda_ProcHeader.cuh" />
-    <ClInclude Include="..\..\src\FileRead-Program\SS\FileReadThread.hpp" />
-    <ClInclude Include="..\..\src\FileRead-Program\SS\Global.hpp" />
-    <ClInclude Include="..\..\src\FileRead-Program\SS\ProcessThread.hpp" />
-    <ClInclude Include="..\..\src\FileRead-Program\SS\thread.hpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.targets" />

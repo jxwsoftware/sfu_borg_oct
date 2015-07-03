@@ -41,9 +41,10 @@ policies, either expressed or implied.
 #include <stdio.h>
 #include <cuda.h> //Include the general CUDA Header file
 #include <cufft.h> //This is to perform FFT using CUDA
-#include <cutil_inline.h> //This is to perform CUDA safecall functions
+#include <helper_cuda.h> //This is to perform CUDA safecall functions
 #include <cuda_runtime.h>
-#include "cuda_ProcKernels.cu"
+#include "cuda_Header.cuh"
+//#include "cuda_ProcKernels.cu"
 
 const float MINVAL = 7.40f;
 const float MAXVAL = 9.80f;
@@ -101,16 +102,6 @@ cudaStream_t memcpyStream;
 cudaStream_t kernelStream;
 cudaEvent_t start_event, stop_event;
 
-/*************************************************************************************************************************/
-extern "C" void callCubicPrefilter(float *dev_Coeffs, int pitch, int width, int height, int threadPerBlock, cudaStream_t processStream);
-extern "C" void initUshortTexture(unsigned short *host_array, int width, int height, int numFrames, cudaStream_t thisStream);
-extern "C" void initFloatTexture(float *dev_array, int width, int height, int numFrames, cudaStream_t thisStream);
-extern "C" void printComplexArray(Complex *devArray);
-extern "C" void printFloatArray(float *devArray);
-extern "C" void printUShortArray(unsigned short *devArray);
-extern "C" void cleanUpCudaArray();
-
-/*************************************************************************************************************************/
 
 
 //Interpolation Kernel is NO LONGER STREAMED, to avoid conflict with texture setup
@@ -129,8 +120,8 @@ void interp_and_DCSub(Complex *dev_complexBuffer)
 			h_lookupLambda[i] = ((lambdaMin*lambdaMax*scale)/(lambdaMin*i + lambdaMax*(scale-i)) - lambdaMin) * scale/diff;
 		}
 
-		cutilSafeCall( cudaMemcpy((void *) linearIdx, h_linearIdx, frameWidth*sizeof(float), cudaMemcpyHostToDevice));
-		cutilSafeCall( cudaMemcpy((void *) lookupLambda, h_lookupLambda, frameWidth*sizeof(float), cudaMemcpyHostToDevice));
+		checkCudaErrors( cudaMemcpy((void *) linearIdx, h_linearIdx, frameWidth*sizeof(float), cudaMemcpyHostToDevice));
+		checkCudaErrors( cudaMemcpy((void *) lookupLambda, h_lookupLambda, frameWidth*sizeof(float), cudaMemcpyHostToDevice));
 
 		free(h_lookupLambda);
 		free(h_linearIdx);
@@ -174,7 +165,7 @@ void dispersionCompensation(Complex *d_ComplexArray, Complex *d_fftCompBuffer, c
 	dim3 dimGridX(( bufferSize )/ dimBlockX.x);
 
 //First Perform the Hilbert Transform
-	cufftSafeCall(
+	checkCudaErrors(
         cufftExecC2C(hilbert_plan,
                      (cufftComplex *)d_ComplexArray,
                      (cufftComplex *)d_ComplexArray,
@@ -184,7 +175,7 @@ void dispersionCompensation(Complex *d_ComplexArray, Complex *d_fftCompBuffer, c
 	hilbertCoeff<<<dimGridX, dimBlockX, 0, processStream>>>
 		(d_ComplexArray, frameWidth);
 
-	cufftSafeCall(
+	checkCudaErrors(
         cufftExecC2C(hilbert_plan,
                      (cufftComplex *)d_ComplexArray,
                      (cufftComplex *)d_ComplexArray,
@@ -207,7 +198,7 @@ void dispersionCompensation(Complex *d_ComplexArray, Complex *d_fftCompBuffer, c
 
 void batchFFT(Complex *d_ComplexArray, cudaStream_t processStream)
 {
-	cufftSafeCall(
+	checkCudaErrors(
 		cufftExecC2C(fft_plan,
 					(cufftComplex *)d_ComplexArray,
 					(cufftComplex *)d_ComplexArray,
@@ -269,34 +260,34 @@ void postFFTCrop(Complex *d_ComplexArray, float *dev_processBuffer, int frames, 
 
 void initProcCuda()
 {
-		cutilSafeCall( cudaMalloc((void**)&dev_tempBuffer, bufferSize * sizeof(float)));
+		checkCudaErrors( cudaMalloc((void**)&dev_tempBuffer, bufferSize * sizeof(float)));
 
 		cudaStreamCreate(&memcpyStream);
 		cudaStreamCreate(&kernelStream);
 
-		cutilSafeCall( cudaMalloc((void**)&dev_ushortBuffer, bufferSize * sizeof(unsigned short)));
+		checkCudaErrors( cudaMalloc((void**)&dev_ushortBuffer, bufferSize * sizeof(unsigned short)));
 		cudaMemset( dev_ushortBuffer, 0, bufferSize * sizeof(unsigned short));
-		cutilSafeCall( cudaMalloc((void**)&dev_floatBuffer, bufferSize * sizeof(float)));
+		checkCudaErrors( cudaMalloc((void**)&dev_floatBuffer, bufferSize * sizeof(float)));
 		cudaMemset( dev_floatBuffer, 0, bufferSize * sizeof(float));
 
-		cutilSafeCall( cudaMalloc((void**)&dcArray, frameWidth * sizeof(float)));
-		cutilSafeCall( cudaMalloc((void**)&lookupLambda, frameWidth * sizeof(float)));
-		cutilSafeCall( cudaMalloc((void**)&linearIdx, frameWidth * sizeof(float)));
-		cutilSafeCall( cudaMalloc((void**)&dispPhaseCartesian, frameWidth * sizeof(Complex)));
+		checkCudaErrors( cudaMalloc((void**)&dcArray, frameWidth * sizeof(float)));
+		checkCudaErrors( cudaMalloc((void**)&lookupLambda, frameWidth * sizeof(float)));
+		checkCudaErrors( cudaMalloc((void**)&linearIdx, frameWidth * sizeof(float)));
+		checkCudaErrors( cudaMalloc((void**)&dispPhaseCartesian, frameWidth * sizeof(Complex)));
 		cudaMemset(dcArray, 0, frameWidth * sizeof(float));
 		cudaMemset(lookupLambda, 0, frameWidth * sizeof(float));
 		cudaMemset(linearIdx, 0, frameWidth * sizeof(float));
 		cudaMemset(dispPhaseCartesian, 0, frameWidth * sizeof(float));
 
-		cutilSafeCall( cudaMalloc((void**)&dev_CompBuffer, bufferSize * sizeof(Complex)));
-		cutilSafeCall( cudaMalloc((void**)&dev_FFTCompBuffer, bufferSize * fftLengthMult * sizeof(Complex)));
+		checkCudaErrors( cudaMalloc((void**)&dev_CompBuffer, bufferSize * sizeof(Complex)));
+		checkCudaErrors( cudaMalloc((void**)&dev_FFTCompBuffer, bufferSize * fftLengthMult * sizeof(Complex)));
 
 		//Be sure to have the fft_width size be dynamic
-		cufftSafeCall( cufftPlan1d( &fft_plan, fftLengthMult*frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer));
-		cufftSafeCall( cufftSetStream(fft_plan, kernelStream));
+		checkCudaErrors( cufftPlan1d( &fft_plan, fftLengthMult*frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer));
+		checkCudaErrors( cufftSetStream(fft_plan, kernelStream));
 
-		cufftSafeCall(cufftPlan1d( &hilbert_plan, frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer));
-		cufftSafeCall( cufftSetStream(hilbert_plan, kernelStream));
+		checkCudaErrors(cufftPlan1d( &hilbert_plan, frameWidth, CUFFT_C2C, frameHeight *  framesPerBuffer));
+		checkCudaErrors( cufftSetStream(hilbert_plan, kernelStream));
 }
 
 
@@ -346,18 +337,18 @@ extern "C" void initCudaProcVar(	int frameWid,
 extern "C" void cleanUpCUDABuffers()
 {
 	//Clean up all CUDA Buffers and arryays
-	cutilSafeCall(cudaFree(dev_ushortBuffer));
-	cutilSafeCall(cudaFree(dev_floatBuffer));
-	cutilSafeCall(cudaFree(lookupLambda));
-	cutilSafeCall(cudaFree(linearIdx));
-	cutilSafeCall(cudaFree(dcArray));
-	cutilSafeCall(cudaFree(dispPhaseCartesian));
-	cutilSafeCall(cudaFree(dev_FFTCompBuffer));
-	cutilSafeCall(cudaFree(dev_CompBuffer));
+	checkCudaErrors(cudaFree(dev_ushortBuffer));
+	checkCudaErrors(cudaFree(dev_floatBuffer));
+	checkCudaErrors(cudaFree(lookupLambda));
+	checkCudaErrors(cudaFree(linearIdx));
+	checkCudaErrors(cudaFree(dcArray));
+	checkCudaErrors(cudaFree(dispPhaseCartesian));
+	checkCudaErrors(cudaFree(dev_FFTCompBuffer));
+	checkCudaErrors(cudaFree(dev_CompBuffer));
 
 	//Clean up FFT plans created
-	cufftSafeCall(cufftDestroy(fft_plan));
-	cufftSafeCall(cufftDestroy(hilbert_plan));
+	checkCudaErrors(cufftDestroy(fft_plan));
+	checkCudaErrors(cufftDestroy(hilbert_plan));
 
 	//Clean up the streams created
 	cudaStreamDestroy(memcpyStream);
@@ -417,14 +408,12 @@ extern "C" void cudaPipeline(	unsigned short *h_buffer,
 	//Do a Host to Device Memcpy if using Swept Source, or using Prefiltered Cubic
 	//Otherwise, memcpy will happen later directly in Host to Array, instead of Host to Device
 	if ((samplingMethod==2)) {
-		cutilSafeCall( cudaMemcpyAsync((void *) dev_ushortBuffer, h_buffer, bufferSize*sizeof(unsigned short), cudaMemcpyHostToDevice, memcpyStream));
+		checkCudaErrors( cudaMemcpyAsync((void *) dev_ushortBuffer, h_buffer, bufferSize*sizeof(unsigned short), cudaMemcpyHostToDevice, memcpyStream));
 	} 
 
 //Full Pipeline Implementation
 	//For Linear Interpolation and Non-Prefiltered Cubic Interpolation
-	else if (samplingMethod==0 || samplingMethod==1) {
-		initUshortTexture(h_buffer, frameWidth, frameHeight, framesPerBuffer, memcpyStream);
-	}
+	initUshortTexture(h_buffer, frameWidth, frameHeight, framesPerBuffer, memcpyStream);
 
 	dispersionCompensation(dev_CompBuffer, dev_FFTCompBuffer, kernelStream);
 	batchFFT(dev_FFTCompBuffer, kernelStream);
@@ -436,12 +425,6 @@ extern "C" void cudaPipeline(	unsigned short *h_buffer,
 		postFFTDownsize(dev_FFTCompBuffer, dev_frameBuff, framesPerBuffer, frameIdx, reduction, kernelStream);
 	}
 
-
-	if (samplingMethod==2) { 
-		castKernel<<<bufferSize/numThreadsPerBlock, numThreadsPerBlock>>>(dev_ushortBuffer, dev_floatBuffer);
-		callCubicPrefilter(dev_floatBuffer, frameWidth*sizeof(float), frameWidth, frameHeight*framesPerBuffer, numThreadsPerBlock, memcpyStream);
-		initFloatTexture(dev_floatBuffer, frameWidth, frameHeight, framesPerBuffer, memcpyStream);
-	}
 
 	//This method is used for synchronization with memcpystream as reference
 	cudaStreamSynchronize ( memcpyStream );
@@ -471,11 +454,11 @@ extern "C" void cudaRenderFundus( float *dev_fundus, float *dev_volume, int widt
 	dim3 dimGridX(height*increment);
 
 	if (partialFundus) {
-			renderFundus<blockSize><<<dimGridX, dimBlockX, 0, kernelStream>>>
+			renderFundus<<<dimGridX, dimBlockX, 0, kernelStream>>>
 				(dev_volume, dev_fundus, width, scaleCoeff, 0, height*idx);
 	} else {
 		for (int i=0; i<depth; i+=increment) {
-			renderFundus<blockSize><<<dimGridX, dimBlockX, 0, kernelStream>>>
+			renderFundus<<<dimGridX, dimBlockX, 0, kernelStream>>>
 				(dev_volume, dev_fundus, width, scaleCoeff, height*i, height*i);
 		}
 	}

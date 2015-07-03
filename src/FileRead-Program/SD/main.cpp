@@ -55,11 +55,11 @@ int main()
 {
 	bool fileRead = true;
 
-	int frameWidth = 2048;
-	int frameHeight = 512;
-	int framesPerBuffer = 1;
+	int frameWidth = 1024;
+	int frameHeight = 300;
+	int framesPerBuffer = 10;
 	int samplingMethod  = 0; //0 for Interpolation, 1 for Fast Cubic, 2 for Pref Cubic
-	int volumeFrames = 256;
+	int volumeFrames = 300;
 
 
 //OpenGL ONLY Variables to be transferred
@@ -95,7 +95,8 @@ int main()
 
 	//Define the filename of the file to be used for acquisition simulation
 	char *fileName = new char[100];
-	fileName = "MSC23-ST-OD-Avg-2"; dispVal = 2.3f * pow(0.1f,5);
+	fileName = "../../../.data/Mouse-Dataset.unp";
+	dispVal = 2.3f * pow(0.1f,5);
 
 
 	FILE *file = fopen(fileName, "rb");

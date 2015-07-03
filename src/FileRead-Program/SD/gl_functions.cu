@@ -41,10 +41,12 @@ policies, either expressed or implied.
 #include <stdio.h>
 //Include the windows.h for for using WINDOWS API Functions
 #include <windows.h> //Include the windows.h for creating a window
-#include <cutil_inline.h> //This is to perform CUDA safecall functions
+#include <helper_cuda.h> //This is to perform CUDA safecall functions
 #include <GL/glew.h> //Required to Generate GL Buffers
 #include <GL/freeglut.h>
 #include <cuda_gl_interop.h> 
+
+#include "cuda_Header.cuh"
 
 //Delay upon which timerevent is called
 #define	REFRESH_DELAY	0 //ms
@@ -154,48 +156,6 @@ float invViewMatrix[12];
 dim3 blockSize(256);
 dim3 gridSize;
 
-/*************************************************************************************************************************/
-/*******************************************    Cuda Processing Pipeline     *********************************************/
-extern "C" void changeSamplingMethod(unsigned int sampleMethod);
-extern "C" void acquireDC();
-extern "C" void decreaseDispVal();
-extern "C" void increaseDispVal();
-extern "C" void decreaseMinVal();
-extern "C" void increaseMinVal();
-extern "C" void increaseMaxVal();
-extern "C" void decreaseMaxVal();
-extern "C" void cleanUpCUDABuffers();
-extern "C" void cudaPipeline( unsigned short *h_buffer, float *dev_frameBuff, int frameIdx, int reduction, int offset, int range);
-extern "C" void cudaRenderFundus( float *dev_fundus, float *dev_volume, int width, int height, int depth, int idx);
-extern "C" void frameAvg(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int numberOfFrames, int frameNum);
-extern "C" void copySingleFrame(float *dev_multiFrameBuff, float *dev_displayBuff, int width, int height, int frameNum);
-
-/*************************************************************************************************************************/
-/*****************************************    Cuda Volume Rendering Pipeline     *****************************************/
-/************* These Functions have been modified from NVIDIA's volumeRender_kernel.cu at the following link: ************/
-/************* http://docs.nvidia.com/cuda/cuda-samples/index.html#volume-rendering-with-3d-textures *********************/
-/*************************************************************************************************************************/
-extern "C" void copyInvViewMatrix(float *invViewMatrix, size_t sizeofMatrix);
-extern "C" void freeVolumeBuffers();
-extern "C" void initRayCastCuda(void *d_volume, cudaExtent volumeSize, cudaMemcpyKind memcpyKind);
-extern "C" void rayCast_kernel(dim3 gridSize, dim3 blockSize, float *d_output, int imageW, int imageH, 
-				   float density, float brightness, float transferOffset, float transferScale, float voxelThreshold);
-
-
-/*************************************************************************************************************************/
-/*****************************************    Cuda Bilateral Filtering   *************************************************/
-/************* These Functions have been modified from NVIDIA's bilateral_kernel.cu at the following link: ***************/
-/************* http://docs.nvidia.com/cuda/cuda-samples/index.html#bilateral-filter **************************************/
-/*************************************************************************************************************************/
-
-extern "C" void initTexture(int width, int height, void *pImage);
-extern "C" void freeFilterTextures();
-extern "C" void updateGaussian(float delta, int radius);
-extern "C" void bilateralFilter(float *d_dest, int width, int height,float e_d, 
-									int radius, int iterations,int nthreads);
-
-/*************************************************************************************************************************/
-/*************************************************************************************************************************/
 
 
 /************* This Functions have been modified from NVIDIA's volumeRender.cpp at the following link: *******************/
@@ -210,13 +170,16 @@ void computeFPS()
 {
 	const char* method[] = {"Down Sizing", "Volume Cropping"};
 	const float updatesPerSec = 6.0f;
+	static clock_t t1 = 0;
+	static clock_t t2 = 0;
 	static int counter = 0;
 	static int countLimit = 0;
 
 	if (counter++ > countLimit)
 	{
-		cutStopTimer(hTimer);
-		float framerate = 1000.0f * (float)counter / cutGetTimerValue(hTimer);
+		t2 = clock() - t1;
+		t1 = clock();
+		float framerate = 1000.0f * (float)counter / t2;
 		char str[256];
 		if (processData) {
 			if (volumeRender) {
@@ -235,8 +198,6 @@ void computeFPS()
 		}
 		glutSetWindow(mainWindow);
 		glutSetWindowTitle(str);
-		cutResetTimer(hTimer);
-		cutStartTimer(hTimer);
 		countLimit = (int)(framerate / updatesPerSec);
 		counter = 0;
 	}
@@ -295,7 +256,7 @@ void initBScanTexture()
 {
 		if (bscanPBO) {
 			// unregister this buffer object from CUDA C
-			cutilSafeCall(cudaGraphicsUnregisterResource(bscanCudaRes));
+			checkCudaErrors(cudaGraphicsUnregisterResource(bscanCudaRes));
 			glDeleteBuffersARB(1, &bscanPBO);
 			glDeleteTextures(1, &bscanTEX);
 		}
@@ -308,7 +269,7 @@ void initBScanTexture()
 
 		glGenTextures(1, &bscanTEX);				//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, bscanTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, bscanWidth, bscanHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, bscanWidth, bscanHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
@@ -323,7 +284,7 @@ void initFundusTexture()
 {
 		if (fundusPBO) {
 			// unregister this buffer object from CUDA C
-			cutilSafeCall(cudaGraphicsUnregisterResource(fundusCudaRes));
+			checkCudaErrors(cudaGraphicsUnregisterResource(fundusCudaRes));
 			glDeleteBuffersARB(1, &fundusPBO);
 			glDeleteTextures(1, &fundusTEX);
 		}
@@ -336,7 +297,7 @@ void initFundusTexture()
 
 		glGenTextures(1, &fundusTEX);				//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, fundusTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, volumeHeight, frames, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, volumeHeight, frames, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
@@ -350,7 +311,7 @@ void initVolumeTexture()
 {
 		if (volumePBO) {
 			// unregister this buffer object from CUDA C
-			cutilSafeCall(cudaGraphicsUnregisterResource(volumeCudaRes));
+			checkCudaErrors(cudaGraphicsUnregisterResource(volumeCudaRes));
 			// delete old buffer
 			glDeleteBuffersARB(1, &volumePBO);
 			glDeleteTextures(1, &volumeTEX);
@@ -365,7 +326,7 @@ void initVolumeTexture()
 
 		glGenTextures(1, &volumeTEX);		//Generate the Open GL texture
 		glBindTexture(GL_TEXTURE_2D, volumeTEX); //Tell OpenGL which texture to edit
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_INTENSITY, subWindWidth, subWindHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, subWindWidth, subWindHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 		//GL_LINEAR Allows the GL Display to perform Linear Interpolation AFTER processing
 		//This means that when zooming into the image, the zoomed display will be much smoother
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -884,7 +845,7 @@ void timerEvent(int value)
 	if (!volumeRender) {
 		if (processData && !fundusRender) {
 			size_t size;
-			cutilSafeCall(cudaGraphicsMapResources(1,&bscanCudaRes,0));
+			checkCudaErrors(cudaGraphicsMapResources(1,&bscanCudaRes,0));
 			cudaGraphicsResourceGetMappedPointer((void**) &d_FrameBuffer, &size, bscanCudaRes);
 			cudaPipeline( buffer1, NULL, 0, 1, 0, bscanWidth);
 			if (frameAveraging) {
@@ -912,7 +873,7 @@ void timerEvent(int value)
 			newI = (frameCount+framesPerBuffr)%frames;
 			cudaPipeline( &buffer1[newI*(width*height)], NULL, 0, 1, 0, bscanWidth);
 
-			cutilSafeCall(cudaGraphicsMapResources(1,&bscanCudaRes,0));
+			checkCudaErrors(cudaGraphicsMapResources(1,&bscanCudaRes,0));
 			cudaGraphicsResourceGetMappedPointer((void**) &d_FrameBuffer, &size, bscanCudaRes);
 			if (frameAveraging) {
 				frameAvg(NULL, d_FrameBuffer,  bscanWidth, bscanHeight, framesToAvg, 0);
@@ -933,7 +894,7 @@ void timerEvent(int value)
 			glutPostRedisplay();
 
 			if (fundusRender) {
-				cutilSafeCall(cudaGraphicsMapResources(1,&fundusCudaRes,0));
+				checkCudaErrors(cudaGraphicsMapResources(1,&fundusCudaRes,0));
 				cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, fundusCudaRes);
 				cudaRenderFundus(d_DisplayBuffer, NULL, volumeWidth, volumeHeight, framesPerBuffr, frameCount);
 				cudaGraphicsUnmapResources(1,&fundusCudaRes,0);
@@ -967,7 +928,7 @@ void timerEvent(int value)
 						cudaPipeline( &buffer1[newI*(width*height)], d_volumeBuffer, i, 1, 0, volumeWidth);
 				}
 			}
-			cutilSafeCall(cudaGraphicsMapResources(1,&bscanCudaRes,0));
+			checkCudaErrors(cudaGraphicsMapResources(1,&bscanCudaRes,0));
 			cudaGraphicsResourceGetMappedPointer((void**) &d_FrameBuffer, &size, bscanCudaRes);
 
 			if (frameAveraging) {
@@ -1002,9 +963,9 @@ void timerEvent(int value)
 		/************* These Functions have been modified from NVIDIA's volumeRender_kernel.cu at the following link: ************/
 		/************* http://docs.nvidia.com/cuda/cuda-samples/index.html#volume-rendering-with-3d-textures *********************/
 		/******/copyInvViewMatrix(invViewMatrix, sizeof(float4)*3);
-			cutilSafeCall(cudaGraphicsMapResources(1,&volumeCudaRes,0));
+			checkCudaErrors(cudaGraphicsMapResources(1,&volumeCudaRes,0));
 			cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, volumeCudaRes);
-			cutilSafeCall(cudaMemset(d_DisplayBuffer, 0, size));
+			checkCudaErrors(cudaMemset(d_DisplayBuffer, 0, size));
 		/******/rayCast_kernel(	gridSize, blockSize, d_DisplayBuffer, windowWidth, 
 							windowHeight, 0.05f, 1.0f, 0.0f, 1.0f, voxelThreshold);
 			cudaGraphicsUnmapResources(1,&volumeCudaRes,0);
@@ -1014,7 +975,7 @@ void timerEvent(int value)
 		}
 
 		if (fundusRender) {
-			cutilSafeCall(cudaGraphicsMapResources(1,&fundusCudaRes,0));
+			checkCudaErrors(cudaGraphicsMapResources(1,&fundusCudaRes,0));
 			cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, fundusCudaRes);
 			cudaRenderFundus(d_DisplayBuffer, d_volumeBuffer, volumeWidth, volumeHeight, frames, 0);
 			cudaGraphicsUnmapResources(1,&fundusCudaRes,0);
@@ -1150,7 +1111,6 @@ void cleanUp ()
 
 extern "C" void initGLEvent(int argc, char** argv)
 {
-	CUT_SAFE_CALL(cutCreateTimer(&hTimer));
 	//GL INITIALIZATION:
 	glutInit(&argc, argv); //glutInit will initialize the GLUT library to operate with the Command Line
 	glutInitDisplayMode(GLUT_DOUBLE);
@@ -1210,7 +1170,7 @@ extern "C" void initGLEvent(int argc, char** argv)
 
 	if (volumeRender) {
 		if (processData) {
-			cutilSafeCall( cudaMalloc((void**)&d_volumeBuffer, width * height * frames * sizeof(float) ));
+			checkCudaErrors( cudaMalloc((void**)&d_volumeBuffer, width * height * frames * sizeof(float) ));
 			cudaMemset( d_volumeBuffer, 0, width * height * frames * sizeof(float));
 		} else if (!processData) {
 			/************* These Functions have been modified from NVIDIA's volumeRender_kernel.cu at the following link: ************/
@@ -1270,7 +1230,7 @@ extern "C" void fundusSwitch()
 {
 	if (fundusRender) {
 		size_t size;
-		cutilSafeCall(cudaGraphicsMapResources(1,&fundusCudaRes,0));
+		checkCudaErrors(cudaGraphicsMapResources(1,&fundusCudaRes,0));
 		cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, fundusCudaRes);
 		cudaMemset( d_DisplayBuffer, 0, size);
 		cudaGraphicsUnmapResources(1,&fundusCudaRes,0);
@@ -1288,9 +1248,9 @@ extern "C" void volumeSwitch()
 		/************* http://docs.nvidia.com/cuda/cuda-samples/index.html#volume-rendering-with-3d-textures *********************/
 		/**/copyInvViewMatrix(invViewMatrix, sizeof(float4)*3);
 		/*************************************************************************************************************************/
-		cutilSafeCall(cudaGraphicsMapResources(1,&volumeCudaRes,0));
+		checkCudaErrors(cudaGraphicsMapResources(1,&volumeCudaRes,0));
 		cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, volumeCudaRes);
-		cutilSafeCall(cudaMemset(d_DisplayBuffer, 0, size));
+		checkCudaErrors(cudaMemset(d_DisplayBuffer, 0, size));
 		cudaGraphicsUnmapResources(1,&volumeCudaRes,0);
 		glutSetWindow(volumeWindow);
 		glutPostRedisplay();

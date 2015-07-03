@@ -1,7 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "msvc_2012", "msvc_2012.vcxproj", "{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SS", "SS\SS.vcxproj", "{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SD", "SD\SD.vcxproj", "{288B241A-AD49-4FBD-AF3B-A0DF943BCFAE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +15,10 @@ Global
 		{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}.Debug|x64.Build.0 = Debug|x64
 		{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}.Release|x64.ActiveCfg = Release|x64
 		{D301AF47-1EE2-4FE2-B7A2-41AEEABBF1E9}.Release|x64.Build.0 = Release|x64
+		{288B241A-AD49-4FBD-AF3B-A0DF943BCFAE}.Debug|x64.ActiveCfg = Debug|x64
+		{288B241A-AD49-4FBD-AF3B-A0DF943BCFAE}.Debug|x64.Build.0 = Debug|x64
+		{288B241A-AD49-4FBD-AF3B-A0DF943BCFAE}.Release|x64.ActiveCfg = Release|x64
+		{288B241A-AD49-4FBD-AF3B-A0DF943BCFAE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

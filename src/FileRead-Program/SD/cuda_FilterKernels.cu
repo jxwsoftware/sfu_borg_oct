@@ -14,8 +14,8 @@
 #ifndef _FILTER_KERNEL_H_
 #define _FILTER_KERNEL_H_
 
-#include <cutil_inline.h>    // includes cuda.h and cuda_runtime_api.h
-#include <cutil_math.h>
+#include <helper_cuda.h>    // includes cuda.h and cuda_runtime_api.h
+#include <helper_math.h>
 
 texture<float, 2, cudaReadModeElementType> imageTex;
 texture<float, 1, cudaReadModeElementType> gaussianTex;
@@ -126,20 +126,20 @@ void initTexture(int width, int height, void *pImage)
     // copy image data to array
 	if (!mallocImgArray) {
 		cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
-		cutilSafeCall( cudaMallocArray  ( &d_array, &channelDesc, width, height )); 
-		cutilSafeCall( cudaMallocArray  ( &d_tempArray, &channelDesc, width, height ));
+		checkCudaErrors( cudaMallocArray  ( &d_array, &channelDesc, width, height )); 
+		checkCudaErrors( cudaMallocArray  ( &d_tempArray, &channelDesc, width, height ));
 		mallocImgArray = true;
 	}
-    cutilSafeCall( cudaMemcpyToArray( d_array, 0, 0, pImage, size, cudaMemcpyDeviceToDevice));
+    checkCudaErrors( cudaMemcpyToArray( d_array, 0, 0, pImage, size, cudaMemcpyDeviceToDevice));
 }
 
 extern "C"
 void freeFilterTextures()
 {
 	if (mallocImgArray) {
-		cutilSafeCall(cudaFreeArray(d_array));
-		cutilSafeCall(cudaFreeArray(d_tempArray));
-		cutilSafeCall(cudaFreeArray(d_gaussianArray));
+		checkCudaErrors(cudaFreeArray(d_array));
+		checkCudaErrors(cudaFreeArray(d_tempArray));
+		checkCudaErrors(cudaFreeArray(d_gaussianArray));
 		mallocImgArray = false;
 	}
 }
@@ -149,12 +149,12 @@ extern "C"
 void updateGaussian(float delta, int radius)
 {
 	if (mallocImgArray) {
-		cutilSafeCall(cudaFreeArray(d_gaussianArray));
+		checkCudaErrors(cudaFreeArray(d_gaussianArray));
 	}
     int size = 2 * radius + 1;
 
     float* d_gaussian;
-    cutilSafeCall(cudaMalloc( (void**) &d_gaussian, 
+    checkCudaErrors(cudaMalloc( (void**) &d_gaussian, 
         (2 * radius + 1)* sizeof(float)));
 
     //generate gaussian array
@@ -162,12 +162,12 @@ void updateGaussian(float delta, int radius)
 
     //create cuda array
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
-    cutilSafeCall( cudaMallocArray( &d_gaussianArray, &channelDesc, size, 1 )); 
-    cutilSafeCall( cudaMemcpyToArray( d_gaussianArray, 0, 0, d_gaussian, size * sizeof (float), cudaMemcpyDeviceToDevice));
+    checkCudaErrors( cudaMallocArray( &d_gaussianArray, &channelDesc, size, 1 )); 
+    checkCudaErrors( cudaMemcpyToArray( d_gaussianArray, 0, 0, d_gaussian, size * sizeof (float), cudaMemcpyDeviceToDevice));
 
     // Bind the array to the texture
-    cutilSafeCall( cudaBindTextureToArray( gaussianTex, d_gaussianArray, channelDesc));
-    cutilSafeCall( cudaFree(d_gaussian) );
+    checkCudaErrors( cudaBindTextureToArray( gaussianTex, d_gaussianArray, channelDesc));
+    checkCudaErrors( cudaFree(d_gaussian) );
 }
 
 
@@ -190,7 +190,7 @@ void bilateralFilter(	float *d_dest,
 							int nthreads)
 {
     // Bind the array to the texture
-    cutilSafeCall( cudaBindTextureToArray(imageTex, d_array) );
+    checkCudaErrors( cudaBindTextureToArray(imageTex, d_array) );
 
     for(int i=0; i<iterations; i++) 
     {
@@ -201,9 +201,9 @@ void bilateralFilter(	float *d_dest,
 
         if (iterations > 1) {
             // copy result back from global memory to array
-            cutilSafeCall( cudaMemcpyToArray( d_tempArray, 0, 0, d_dest, width * height * sizeof(float),
+            checkCudaErrors( cudaMemcpyToArray( d_tempArray, 0, 0, d_dest, width * height * sizeof(float),
                 cudaMemcpyDeviceToDevice));
-            cutilSafeCall( cudaBindTextureToArray(imageTex, d_tempArray) );
+            checkCudaErrors( cudaBindTextureToArray(imageTex, d_tempArray) );
         }
     }
 }

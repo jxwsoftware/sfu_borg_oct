@@ -40,19 +40,11 @@ policies, either expressed or implied.
 #include <stdio.h>
 #include <cuda.h> //Include the general CUDA Header file
 #include <cufft.h> //This is to perform FFT using CUDA
-#include <cutil_inline.h> //This is to perform CUDA safecall functions
+#include <helper_cuda.h> //This is to perform CUDA safecall functions
 #include <cuda_runtime.h>
 
-//The Functions used for Cubic Spline Interpolation
-//These functions are developped by Daniel Ruijters et al.
-//These files can be obtained at: http://www.dannyruijters.nl/cubicinterpolation/
-//Ensure the parent directory "CubicBSpline" is changed to whichever parent directory they have been installed in
-//The name "CubicBSpline" is custom-renamed directory, therefore it will not be the default name after download
-#include <CubicBSpline/cubicTex2D.cu>
-#include <CubicBSpline/cubicPrefilter2D.cu>
-//End of Cubic B-Spline include files
+#include "cuda_Header.cuh"
 
-typedef float2 Complex;
 texture<unsigned short, cudaTextureType2D, cudaReadModeNormalizedFloat> texRef;
 texture<float, cudaTextureType2D, cudaReadModeElementType> texRefPref; 
 cudaArray* cuArray;
@@ -132,19 +124,7 @@ __global__ void interp_DCSub(	unsigned int sampMethod,
     // Read from texture and write to global memory 
 
 	float tempVal;
-
-	//Linear Interpolation
-	if (sampMethod == 0) {
-		tempVal = tex2D(texRef, u, v);
-	}
-	//Cubic B-Spline Interpolation
-	else if (sampMethod == 1) { 
-		tempVal = cubicTex2D(texRef, u, v);
-	}
-
-	else if (sampMethod == 2) {
-		tempVal = cubicTex2D(texRefPref, u, v);
-	}
+	tempVal = tex2D(texRef, u, v);
 
 	//Different output depending on whether DC has been acquired or not
 	if (dcAcquired) {
@@ -286,8 +266,7 @@ __global__ void avgKernel(float *src_Buffer, float *dst_Buffer, int frameNum, in
 }
 
 
-template <unsigned int blockSize>
-__device__ void warpReduce(volatile float *sdata, unsigned int tid) 
+__device__ void warpReduce(volatile float *sdata, unsigned int tid, unsigned int blockSize) 
 {
 	if (blockSize >=  64) sdata[tid] += sdata[tid + 32];
 	if (blockSize >=  32) sdata[tid] += sdata[tid + 16];
@@ -298,7 +277,6 @@ __device__ void warpReduce(volatile float *sdata, unsigned int tid)
 }
 
 
-template <unsigned int blockSize>
 __global__ void renderFundus(float *g_idata, float *g_odata, unsigned int width, float scaleCoeff, int inputOffset, int outputOffset) 
 {
 	//The declaration for 1024 elements is arbitrary
@@ -311,13 +289,13 @@ __global__ void renderFundus(float *g_idata, float *g_odata, unsigned int width,
 	int outputRowIdx = blockIdx.x + outputOffset;
 
 	sdata[tid] = 0;
-	for (int j=0; j<width; j+=blockSize)
+	for (int j=0; j<width; j+=blockDim.x)
 		sdata[tid] += g_idata[rowIdx*width + tid + j];
 
 	__syncthreads();
 
-	if (blockSize >= 128) { if (tid <  64) { sdata[tid] += sdata[tid +  64]; } __syncthreads(); }
-	if (tid < 32) warpReduce<blockSize>(sdata, tid);
+	if (blockDim.x >= 128) { if (tid <  64) { sdata[tid] += sdata[tid +  64]; } __syncthreads(); }
+	if (tid < 32) warpReduce(sdata, tid, blockDim.x);
 	if (tid == 0) g_odata[outputRowIdx] = sdata[0]*scaleCoeff; //Equivalent to 7.0f/1024.0f, multiplication much faster than division
 }
 
@@ -341,7 +319,7 @@ __global__ void syncKernel()
 
 extern "C" void cleanUpCudaArray()
 {
-	cutilSafeCall(cudaFreeArray(cuArray));
+	checkCudaErrors(cudaFreeArray(cuArray));
 
 }
 
@@ -353,18 +331,18 @@ extern "C" void initUshortTexture(unsigned short *host_array, int width, int hei
 
 	if (currentMalloc == floatType) {
 		cudaUnbindTexture(texRefPref);
-		cutilSafeCall(cudaFreeArray(cuArray));
+		checkCudaErrors(cudaFreeArray(cuArray));
 		currentMalloc = nullType;
 	}
 	if (currentMalloc == nullType) {
-		cutilSafeCall( cudaMallocArray(&cuArray, &channelDesc, width, height*numFrames));
+		checkCudaErrors( cudaMallocArray(&cuArray, &channelDesc, width, height*numFrames));
 		currentMalloc = uShortType;
 	}
-	cutilSafeCall(cudaMemcpyToArrayAsync(cuArray, 0, 0, host_array, size*sizeof(unsigned short), cudaMemcpyHostToDevice, thisStream));	
+	checkCudaErrors(cudaMemcpyToArrayAsync(cuArray, 0, 0, host_array, size*sizeof(unsigned short), cudaMemcpyHostToDevice, thisStream));	
 
 	texRef.normalized = false;  // access with normalized texture coordinates
 	texRef.filterMode = cudaFilterModeLinear;
-	cutilSafeCall(cudaBindTextureToArray(texRef, cuArray, channelDesc));
+	checkCudaErrors(cudaBindTextureToArray(texRef, cuArray, channelDesc));
 }
 
 
@@ -376,48 +354,22 @@ extern "C" void initFloatTexture(float *dev_array, int width, int height, int nu
 
 	if (currentMalloc == uShortType) {
 		cudaUnbindTexture(texRef);
-		cutilSafeCall(cudaFreeArray(cuArray));
+		checkCudaErrors(cudaFreeArray(cuArray));
 		currentMalloc = nullType;
 	}
 
 	if (currentMalloc == nullType) {
-		cutilSafeCall( cudaMallocArray(&cuArray, &channelDesc, width, height*numFrames));
+		checkCudaErrors( cudaMallocArray(&cuArray, &channelDesc, width, height*numFrames));
 		currentMalloc = floatType;
 	}
-	cutilSafeCall(cudaMemcpyToArrayAsync(cuArray, 0, 0, dev_array, size*sizeof(float), cudaMemcpyDeviceToDevice, thisStream));
+	checkCudaErrors(cudaMemcpyToArrayAsync(cuArray, 0, 0, dev_array, size*sizeof(float), cudaMemcpyDeviceToDevice, thisStream));
 
 	texRefPref.normalized = false;
 	texRefPref.filterMode = cudaFilterModeLinear;
-	cutilSafeCall(cudaBindTextureToArray(texRefPref, cuArray, channelDesc));
+	checkCudaErrors(cudaBindTextureToArray(texRefPref, cuArray, channelDesc));
 
 }
 
-
-//The following is a modified version of the CubicBSplinePrefilter2D extern function defined in cubicPrefilter2D.cu
-//This file can be obtained at: http://www.dannyruijters.nl/cubicinterpolation/
- template<class floatN>
- extern void CubicBSplinePrefilter2DStreamed(floatN* image, uint pitch, uint width, uint height, int xThreads, int yThreads, cudaStream_t processStream)
- {
-		dim3 dimBlockX(min(PowTwoDivider(height), xThreads));
-		dim3 dimGridX(height / dimBlockX.x);
-		SamplesToCoefficients2DX<floatN><<<dimGridX, dimBlockX, 0, processStream>>>(image, pitch, width, height);
-		CUT_CHECK_ERROR("SamplesToCoefficients2DX kernel failed");
-
-		dim3 dimBlockY(min(PowTwoDivider(width), yThreads));
-		dim3 dimGridY(width / dimBlockY.x);
-		SamplesToCoefficients2DY<floatN><<<dimGridY, dimBlockY, 0, processStream>>>(image, pitch, width, height);
-		CUT_CHECK_ERROR("SamplesToCoefficients2DY kernel failed");
- }
-
- //This function will call the function above
-extern "C" void callCubicPrefilter(float *dev_Coeffs, int pitch, int width, int height, int threadPerBlock, cudaStream_t processStream)
-{
-	int xKernelThreads = 16;
-	int yKernelThreads = 256;
-	return CubicBSplinePrefilter2DStreamed(dev_Coeffs, pitch, width, height, xKernelThreads, yKernelThreads, processStream);
-}
-// End of Cubic Prefilter Calls
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 

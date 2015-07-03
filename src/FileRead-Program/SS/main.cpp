@@ -76,7 +76,7 @@ int main()
 
 	//Define the filename to be used for file acquisition simulation
 	char *fileName = new char[100];
-	fileName = "../../.data/Mouse-Dataset.unp";
+	fileName = "../../../.data/Mouse-Dataset.unp";
 
 	FILE *file = fopen(fileName, "rb");
 	if (file==NULL)
