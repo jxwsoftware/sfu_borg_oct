@@ -45,12 +45,12 @@ using namespace std;
 
 int main()
 {
-	bool fileRead = true;
+	bool fileRead = false;
 
 	int frameWidth = 1024;
-	int frameHeight = 256;
+	int frameHeight = 300;
 	int framesPerBuffer = 20;
-	int volumeSize = 256;
+	int volumeSize = 100;
 
 
 //OpenGL ONLY Variables to be transferred

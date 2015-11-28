@@ -36,7 +36,7 @@ those of the authors and should not be interpreted as representing official
 policies, either expressed or implied.
 **********************************************************************************/
 
-
+#include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <cuda.h> //Include the general CUDA Header file
@@ -232,7 +232,13 @@ void copySingleFrame(float *dev_multiFrameBuff, float *dev_displayBuff, int widt
 		(dev_multiFrameBuff, dev_displayBuff, frameNum, width*height);
 }
 
-
+void print_cuda_error()
+{
+#if 0
+  cudaDeviceSynchronize();
+  std::cout << cudaGetErrorString( cudaGetLastError()) << std::endl;
+#endif
+}
 
 void cudaPipeline(	unsigned short *h_buffer, 
 								float *dev_frameBuff, 
@@ -248,6 +254,8 @@ void cudaPipeline(	unsigned short *h_buffer,
 	//DO NOT remove this kernel!
 	syncKernel<<<1,1>>>();
 	////
+
+  print_cuda_error();
 
 	unsigned short *processBuffer;
 	unsigned short *memcpyBuffer;
@@ -273,22 +281,30 @@ void cudaPipeline(	unsigned short *h_buffer,
 		memcpyBuffer = dev_uShortBufferA;
 		processBufferID = A;
 	}
-
+  print_cuda_error();
 	//Memcpy data into one buffer
 	cudaMemcpyAsync((void *) memcpyBuffer, h_buffer, bufferSize*sizeof(unsigned short), cudaMemcpyHostToDevice, memcpyStream);
-	subDC_and_PadComplex(processBuffer, dev_FFTCompBuffer, dcArray, kernelStream);
+	print_cuda_error();
+  
+  subDC_and_PadComplex(processBuffer, dev_FFTCompBuffer, dcArray, kernelStream);
+  print_cuda_error();
+
 	batchFFT(dev_FFTCompBuffer, kernelStream);
+  print_cuda_error();
 
 	//This kernel must be general for 2D OCT, 3D OCT reduce and crop!
 	if (reduction==1) {
 		postFFTCrop(dev_FFTCompBuffer, dev_frameBuff, framesPerBuffer, frameIdx, offset, range, kernelStream);
+    print_cuda_error();
 	} else {
 		postFFTDownsize(dev_FFTCompBuffer, dev_frameBuff, framesPerBuffer, frameIdx, reduction, kernelStream);
+    print_cuda_error();
 	}
 
 	//Another synchronization call explicitly for the streams only
 	//This synchronization is a second safety measure over the syncKernel call
 	cudaStreamSynchronize(memcpyStream);
+  print_cuda_error();
 }
 
 
@@ -307,9 +323,10 @@ void cudaRenderFundus( float *dev_fundus, float *dev_volume, int width, int heig
 	dim3 dimBlockX(blockSize);
 	dim3 dimGridX(height*increment);
 
-	for (int i=0; i<depth; i+=increment) {
+	for (int i=0; i + increment < depth; i += increment) {
 		renderFundus<<<dimGridX, dimBlockX, 0, kernelStream>>>
 			(dev_volume, dev_fundus, width, scaleCoeff, height*i);
+    print_cuda_error();
 	}
 }
 

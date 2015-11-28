@@ -322,6 +322,7 @@ void keyboard(unsigned char key, int x, int y)
     switch (key)
 	{
     case 27:
+        cudaDeviceReset();
         exit(0);
         break;
 	case 'd':
@@ -848,9 +849,9 @@ void timerEvent(int value)
 
 		if (fundusRender) {
 			checkCudaErrors(cudaGraphicsMapResources(1,&fundusCudaRes,0));
-			cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, fundusCudaRes);
+			checkCudaErrors( cudaGraphicsResourceGetMappedPointer((void**) &d_DisplayBuffer, &size, fundusCudaRes));
 			cudaRenderFundus(d_DisplayBuffer, d_volumeBuffer, volumeWidth, volumeHeight, frames);
-			cudaGraphicsUnmapResources(1,&fundusCudaRes,0);
+			checkCudaErrors( cudaGraphicsUnmapResources(1,&fundusCudaRes,0) );
 			glutSetWindow(fundusWindow);
 			glutPostRedisplay();
 		}
